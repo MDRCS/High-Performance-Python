@@ -72,4 +72,7 @@
     back to RAM to get stored.
     This scenario is ideal because we have minimized the number of reads of the value of number from RAM, instead opting for reads from the
 
+    $ python -m cProfile -o fib.prof fib.py
+    $ pip3 install snakeviz --user
 
+    $ snakeviz fib.profile
