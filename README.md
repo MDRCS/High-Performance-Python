@@ -76,3 +76,52 @@
     $ pip3 install snakeviz --user
 
     $ snakeviz fib.profile
+
+### + Cython - Extending python with C/C++
+
+    Cython is two closely related things:
+    • Cython is a programming language that blends Python with the static type system of C and C++.
+    • cython is a compiler that translates Cython source code into efficient C or C++ source code. This source can then be compiled into a Python extension module or a
+      standalone executable.
+
+    +  Cython’s beauty is this: it combines Python’s expressiveness and dy‐ namism with C’s bare-metal performance while still feeling like Python.
+
+    Comparing Python, C, and Cython
+    Consider a simple Python function fib that computes the nth Fibonacci number:1
+
+    As mentioned previously, Cython understands Python code, so our unmodified Python fib function is also valid Cython code. To convert the dynamically typed Python version
+    to the statically typed Cython version, we use the cdef Cython statement to declare the statically typed C variables i, a, and b. Even for readers who haven’t seen Cython
+    code before, it should be straightforward to understand what is going on.
+
+    check the implementations in ./camp_py_c_cy
+
+![](./static/comp_py_cy_c.png)
+
+    Pure Python
+    The first row (after the header) measures the performance of the pure-Python ver‐ sion of fib, and as expected, it has the poorest performance by a significant
+    margin in all categories. In particular, the call overhead for fib(0) is over half a microsec‐ ond on this system. Each loop iteration in fib(90) requires nearly
+    150 nanosec‐ onds; Python leaves much room for improvement.
+
+    Pure C
+    The second row measures the performance of the pure-C version of fib. In this version there is no interaction with the Python runtime, so there is minimal call
+    overhead; this also means it cannot be used from Python. This version provides a bound for the best performance we can reasonably expect from a simple serial fib
+    function. The fib(0) value indicates that C function call overhead is minimal (2 nanoseconds) when compared to Python, and the fib(90) runtime (164 nanosec‐ onds)
+    is nearly 80 times faster than Python’s on this particular system.
+
+    Hand-written C extension
+    The third row measures a hand-written C extension module for Python 2. This extension module requires several dozen lines of C code, most of it boilerplate that calls
+    the Python/C API. When calling from Python, the extension module must convert Python objects to C data, compute the Fibonacci number in C, and convert the result back
+    to a Python object. Its call overhead (the fib(0) column) is corre‐ spondingly larger than that of the pure-C version, which does not have to convert from and to Python
+    objects. Because it is written in C, it is about three times faster than pure Python for fib(0). It also gives a nice factor-of-30 speedup for fib(90).
+
+    Cython
+    The last row measures the performance for the Cython version. Like the C exten‐ sion, it is usable from Python, so it must convert Python objects to C data before it can
+    compute the Fibonacci number, and then convert the result back to Python. Because of this overhead, it cannot match the pure-C version for fib(0), but, no‐ tably, it has
+    about 2.5 times less overhead than the hand-written C extension. Be‐ cause of this reduced call overhead, it is able to provide a speedup of about a factor of 50 over
+    pure Python for fib(90).
+
+    So, when properly accounting for Python overhead, we see that Cython achieves C-level performance. Moreover, it does better than the hand-written C extension module on
+    the Python-to-C conversions.
+
+    That said, if we determine via profiling that the bottleneck in our program is due to it being I/O or network bound, then we cannot expect Cython to provide a significant improvement
+    in performance. It is worth determining the kind of performance bottle‐ neck you have before turning to Cython—it is a powerful tool, but it must be used in the right way.
