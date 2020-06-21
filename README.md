@@ -125,3 +125,102 @@
 
     That said, if we determine via profiling that the bottleneck in our program is due to it being I/O or network bound, then we cannot expect Cython to provide a significant improvement
     in performance. It is worth determining the kind of performance bottle‐ neck you have before turning to Cython—it is a powerful tool, but it must be used in the right way.
+
+### + Wrapping C Code with Cython :
+
+    check code in the directory -> ./wrapping-c-code-with-cython
+
+    + code wrap_fib.pyx :
+    The cdef extern block may not be immediately transparent, but certain elements are easily identified: we provide the cfib.h header filename in the cdef extern from statement,
+    and we declare the cfib function’s signature in the block’s indented body. After the cdef extern block, we define a fib Python wrapper function, which calls cfib and returns its result.
+
+    ++ After compiling the preceding Cython code into an extension module named wrap_fib
+    we can use it from Python:
+        >>> from wrap_fib import fib
+        >>> help(fib)
+        Help on built-in function fib in module wrap_fib:
+            fib(...)
+                Returns the nth Fibonacci number.
+        >>> fib(90) 2.880067194370816e+18 >>>
+
+    Cython’s wrap‐ per code is better optimized than a hand-written version of the same.
+
+### + Compiling and Running Cython Code :
+
+    This chapter will cover the various ways to compile Cython code so that it can be run by Python. There are several options:
+    • Cython code can be compiled and run interactively from an IPython interpreter.
+    • It can be compiled automatically at import time.
+    • It can be separately compiled by build tools like Python’s distutils.
+    • It can be integrated into standard build systems such as make, CMake, or SCons.
+
+    The Cython Compilation Pipeline
+    Because the Cython language is a superset of Python, the Python interpreter cannot import and run it directly. So how do we get
+    from Cython source to valid Python? Via the Cython compilation pipeline.
+
+    The pipeline comprises two stages. The first stage is handled by the cython compiler, which transforms Cython source into optimized
+    and platform-independent C or C++. The second stage compiles the generated C or C++ source into a shared library with a standard C or C++ compiler.
+
+    The resulting shared library is platform dependent. It is a shared-object file with a .so extension on Linux or Mac OS X, and is a dynamic library with a .pyd
+    extension on Windows. The flags passed to the C or C++ compiler ensure this shared library is a full-fledged Python module. We call this compiled module an extension
+    module, and it can be imported and used as if it were written in pure Python.
+
+    NB: The cython compiler is a source-to-source compiler, and the gener‐ ated code is highly optimized. It is not uncommon for Cython- generated C code to be faster than
+        typical hand-written C. When the author teaches Cython, students often write C equivalents to Cy‐ thon’s code; the Cython version is nearly always faster, and—for
+        equivalent algorithms—is never slower. Cython’s generated C code is also highly portable, supporting all common C compilers and many Python versions simultaneously.
+
+    Installing and Testing Our Setup
+
+    - C and C++ compilers :
+
+    Mac OS X
+    Install the free OS X developer tools via Xcode; this provides a GCC-like compiler.
+
+    Installing Cython :
+    $ pip install cython
+
+    Once we have a C compiler and the cython compiler in place, we are ready to follow along with the distutils and pyximport sections in this chapter.
+
+    The Standard Way: Using distutils with cythonize
+    Python’s standard library includes thedistutilspackage for building, packaging, and distributing Python projects. The distutils package has many features; of interest to us
+    is its ability to compile C source into an extension module, the second stage in the pipeline. It manages all platform, architecture, and Python-version details for us,
+    so we can use one distutils script and run it anywhere to generate our extension module.
+
+    What about the first pipeline stage? That is the job of the cythonize command, which is included with Cython: it takes a Cython source file (and any other necessary options)
+    and compiles it to a C or C++ source file, and then distutils takes it from there.
+
+    By using Python’s distutils module combined with Cython’s cythonize command, we have explicit control over the compilation pipeline. This approach requires that we write a
+    small Python script and run it explicitly. It is the most common way for Python projects to compile and distribute their Cython code to end users.
+
+
+    from distutils.core import setup
+    from Cython.Build import cythonize
+
+    setup(ext_modules=cythonize('fib.pyx'))
+
+    The core of the script is in the setup(cythonize(...)) nested calls. The cythonize function in its simplest usage converts Cython source to C source code by calling the cython compiler.
+    We can pass it a single file, a sequence of files, or a glob pattern that will match Cython files.
+
+    Compiling with distutils on Mac OS X and Linux
+    These two function calls succinctly demonstrate the two stages in the pipeline: cythonize calls the cython compiler on the .pyx source file or files, and setup compiles the generated C or C++
+    code into a Python extension module.
+
+    It is a simple matter to invoke this setup.py script from the command line:
+    $ python setup.py build_ext --inplace
+
+    The build_ext argument is a command instructing distutils to build the Extension object or objects that the cythonize call created. The optional --inplace flag instructs distutils to place
+    each extension module next to its respective Cython .pyx source file.
+
+    To get the full list of options that the build_ext subcommand sup‐ ports, we can run:
+    $ python setup.py build_ext --help
+
+    $ python setup.py build_ext -i
+
+    ++ after executing this two commands we should see ./build directory and fib.**.so file and a fib.c file transpiled from fib.c.
+
+    Using Our Extension Module
+    Whether on Mac OS X, Linux, or Windows, once we have compiled our extension module, we can bring up our Python or IPython interpreter and import the fib module:
+        $ ipython --no-banner
+        In [1]: import fib
+        In [2]: fib?
+
+
