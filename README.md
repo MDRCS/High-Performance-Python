@@ -93,7 +93,7 @@
     to the statically typed Cython version, we use the cdef Cython statement to declare the statically typed C variables i, a, and b. Even for readers who haven’t seen Cython
     code before, it should be straightforward to understand what is going on.
 
-    check the implementations in ./camp_py_c_cy
+    check the implementations in ./benchmarks
 
 ![](./static/comp_py_cy_c.png)
 
@@ -222,5 +222,125 @@
         $ ipython --no-banner
         In [1]: import fib
         In [2]: fib?
+        In [3]: fib.fib(20)
 
+    Interactive Cython with IPython’s %%cython Magic
+    Using distutils to compile Cython code gives us full control over every step of the process. The downside to using distutils is it requires a separate compilation step and
+    works only with .pyx source files—no interactive use allowed. This is a definite disad‐ vantage, as one of Python’s strengths is its interactive interpreter, which allows
+    us to play around with code and test how something works before committing it to a source file. The IPython project has convenient commands that allow us to interactively
+    use Cython from a live IPython session.
+
+    %load_ext Cython
+    Now we can use Cython from IPython via the %%cython magic command:
+    %%cython
+    def fib(int n):
+        cdef int i
+        cdef double a=0.0, b=1.0
+        for i in range(n):
+            a, b = a+b, a
+        return a
+
+    :exit func with two returns.
+
+    The %%cython magic command allows us to write a block of Cython code directly in the IPython interpreter. After exiting the block with two returns,
+    IPython will take the Cython code we defined, paste it into a uniquely named Cython source file, and compile it into an extension module. If compilation
+    is successful, IPython will import everything from that module to make the fib function available in the IPython interactive name‐ space. The compilation
+    pipeline is still in effect, but it is all done for us automatically.
+    We can now call the fib function we just defined:
+    In [14]: fib(90)
+    Out[14]: 2.880067194370816e+18
+
+    NB: The %%cython magic command recognizes when it has already compiled an identical code block, in which case it bypasses the com‐ pilation step and loads
+        the precompiled block directly.
+
+    We can always inspect the generated source file if necessary. It is located in the $IPYTHONDIR/cython directory (~/.ipython/cython on an OS X or *nix system).
+    The module names are not easily readable because they are formed from the md5 hash of the Cython source code, but all the contents are there.
+
+    $ cd ~/.ipython/cython
+
+    We can pass optional arguments to the %%cython magic command. The first set of options control the cython compilation stage:
+
+    -n, --name
+    Specifies the name of the generated .pyx file
+
+    --cplus
+    Instructs cython to generate C++ source
+
+    -a, --annotate
+    Instructs cython to output an annotated source file
+
+    -f, --force
+    Forces cython to regenerate C or C++ source
+
+    The second set of options allows us to control the second pipeline stage:
+
+    -I, --include
+    Adds extra directories to search for file inclusions and cimports
+
+    -c, --compile-args
+    Allows inclusion of extra C compiler arguments
+
+    --link-args
+    Allows inclusion of extra link arguments
+
+    -L
+    Adds extra library search directories
+
+    -l
+    dds extra library names to link against
+
+    Compiling On-the-Fly with pyximport
+    Because Cython is Python-centric, it is natural to want to work with Cython source files as if they were regular, dynamic,
+    importable Python modules. Enter pyximport: it ret‐ rofits the import statement to recognize .pyx extension modules, sends
+    them through the compilation pipeline automatically, and then imports the extension module for use by Python.
+
+    check code ./pyximport/use_pyximport.py
+
+    Controlling pyximport and Managing Dependencies
+    The pyximport package also handles more complex use cases. For instance, what if a Cython source file depends on other source files,
+    such as C or C++ source or header files, or other Cython source files? In this case, pyximport needs to recompile the .pyx file if any
+    of its dependencies have been updated, regardless of whether the .pyx file itself has changed. To enable this functionality, we add a
+    file with the same base name as the .pyx source file and with a .pyxdeps extension in the same directory as the Cython source file.
+    It should contain a listing of files that the .pyx file depends on, one file per line. These files can be in other directories
+    relative to the directory of the .pyxdeps file. The entries can also be glob patterns that match multiple files at once. If a
+    .pyxdeps file exists, pyximport will read it at import time and compare the modification time of each listed file with the
+    modification time of the .pyx file being imported. If any file that matches a pattern in the .pyxdeps file is newer than the
+    .pyx file, then pyximport will recompile on import.
+
+    + compiling manaualy :
+
+    $ export CFLAGS=$(python-config --cflags)
+    $ export LDFLAGS=$(python-config --ldflags)
+    $ cython fib.pyx # --> outputs fib.c
+    $ gcc -c fib.c ${CFLAGS} # outputs fib.o
+    $ gcc fib.o -o fib.so -shared ${LDFLAGS} # --> outputs fib.so
+
+    Using Cython with Other Build Systems
+
+    + CMAKE :
+    # Detects and activates Cython
+    include(UseCython)
+    # Specifies that Cython source files should generate C++
+    set_source_files_properties(
+      ${CYTHON_CMAKE_EXAMPLE_SOURCE_DIR}/src/file.pyx
+      PROPERTIES CYTHON_IS_CXX TRUE )
+    # Adds and compiles Cython source into an extension module
+    cython_add_module( modname file.pyx cpp_source.cxx)
+
+
+    + convert syntax from python2 to python3
+    $ 2to3 -x apply irrationals.py
+
+    + generate c file from python file :
+    $ cython --embed irrationals.py
+
+    This generates irrationals.c with a main entry point that embeds a Python interpreter.
+    We can compile irrationals.c on Mac OS X or Linux using python-config:
+    %% compile
+    $ gcc $(python-config --cflags) $(python-config --ldflags) ./irrationals.c
+
+    %% run
+    $ ./a.out
+    e**pi == 23.14
+    pi**e == 22.46
 
