@@ -344,3 +344,135 @@
     e**pi == 23.14
     pi**e == 22.46
 
+### + Cython in Depth :
+
+    - python interpreter vs C compiler :
+
+    There is a way to bridge the divide between the bytecode-executing VM and machine code–executing CPU: the Python interpreter can run
+    compiled C code directly and transparently to the end user. The C code must be compiled into a specific kind of dynamic library known
+    as an extension module. These modules are full-fledged Python modules, but the code inside of them has been precompiled into machine
+    code by a standard C compiler. When running code in an extension module, the Python VM no longer interprets high-level bytecodes, but
+    instead runs machine code directly. This removes the interpreter’s performance overhead while any operation inside this extension module is running.
+
+    ++ Cython gives us this speedup for free, and we are glad to take it. But the real performance improvements come from replacing Python’s
+    dynamic dispatch with static typing.
+
+    Dynamic Versus Static Typing
+
+    python - dynamic typing
+    When running a Python program, the interpreter spends most of its time figuring out what low-level operation to perform, and extracting the data
+    to give to this low-level operation. Given Python’s design and flexibility, the Python interpreter always has to determine the low-level operation
+    in a completely general way, because a variable can have any type at any time. This is known as dynamic dispatch, and for many reasons,
+    fully general dynamic dispatch is slow.
+
+    c - static typing
+    The situation for C is very different. Because C is compiled and statically typed, the C compiler can determine at compile time what low-level operations
+    to perform and what low-level data to pass as arguments. At runtime, a compiled C program skips nearly all steps that the Python interpreter must perform.
+    For something like a + b with a and b both being fundamental numeric types, the compiler generates a handful of machine code instructions to load the data
+    into registers, add them, and store the result.
+
+    A compiled C program spends nearly all its time calling fast C functions and performing fundamental operations.
+    is it any wonder that a language like C can be hundreds, or even thousands, of times faster than Python for certain operations?
+
+### + cdef declarations :
+
+![](./static/cdef_declar.png)
+
+    Consider the following simple function:
+    def automatic_inference():
+        i=1
+        d=2.0
+        c=3+4
+        r=i*d+c
+        return r
+
+    In this example, Cython types the literals 1 and 3+4j and the variables i, c, and r as general Python objects. Even though these types have obvious
+    corresponding C types, Cython conservatively assumes that the integer i may not be representable as a C long, so types it as a Python object with
+    Python semantics. Automatic inference is able to infer that the 2.0 literal, and hence the variable d, are C doubles and proceeds ac‐ cordingly.
+    To the end user, it is as if d is a regular Python object, but Cython treats it as a C double for performance.
+
+    By means of the infer_types compiler directive, we can give Cython more leeway to infer types in cases that may possibly change semantics—for example,
+    when integer addition may result in overflow.
+    To enable type inference for a function, we can use the decorator form of infer_types:
+
+    cimport cython
+
+    @cython.infer_types(True)
+    def more_inference():
+            i=1
+            d=2.0
+            c=3+4j
+            r=i*d+c r
+            eturn r
+
+
+    Because infer_types is enabled for more_inference, the variable i is typed as a C long; d is a double, as before, and both c and r are C-level complex variables
+    When enabling infer_types, we are taking responsibility to ensure that integer operations do not overflow and that semantics do not change from the untyped version.
+    The infer_types directive can be enabled at function scope or globally, making it easy to test whether it changes the results of the code base, and whether it makes
+    a difference in performance.
+
+    + you can enable infer_types in a global level :
+
+    # cython: infer_types=True
+
+    C Pointers in Cython
+
+    cdef int *p_int
+    cdef float** pp_float = NULL
+
+    cdef st_t *p_st = make_struct()
+    cdef int a_doubled = p_st.a + p_st.a
+
+    Wherever we use the arrow operator in C, we use the dot operator in Cython, and Cython will generate the proper C-level code.
+
+    cdef int a,b,c
+    # ...Calculations using a, b, and c...
+
+    tuple_of_ints = (a, b, c)
+
+    This code is trivial, boring even. The point to emphasize here is that a, b, and c are statically typed integers, and Cython allows
+    the creation of a dynamically typed Python tuple literal with them.
+
+    This example works because there is an obvious correspondence between C ints and Python ints, so Python can transform things automatically
+    for us. This example would not work as is if a, b, and c were, for example, C pointers. In that case we would have to dereference them
+    before putting them into the tuple, or use another strategy.
+
+    Table 3-2 gives the full list of correspondences between built-in Python types and C or C++ types.
+
+![](./static/types_correspendance.png)
+
+    The bint type
+    The bint Boolean integer type is an int at the C level and is converted to and from a Python bool. It has the standard C interpretation of truthiness:
+    zero is False, and non‐ zero is True.
+
+    Integral type conversions and overflow
+    In Python 2, a Python int is stored as a C long, and a Python long has unlimited precision. In Python 3, all int objects are unlimited precision.
+    When converting integral types from Python to C, Cython generates code that checks for overflow. If the C type cannot represent the Python integer,
+    a runtime OverflowError is raised.
+    There are related Boolean overflowcheck and overflowcheck.fold compiler direc‐ tives that will catch overflow errors when we are working with C integers.
+    If overflowcheck is set to True, Cython will raise an OverflowError for overflowing C integer arithmetic operations. The overflowcheck.fold directive,
+    when set, may help remove some overhead when overflowcheck is enabled.
+
+    Following the principle of least astonishment, Cython uses Python semantics by default for division and modulus even when the operands are statically typed C scalars.
+    To obtain C semantics, we can use the cdivision compiler directive
+
+     # cython: cdivision=True
+    or at the function level with a decorator:
+    cimport cython
+    @cython.cdivision(True)
+    def divides(int a, int b):
+        return a/b
+
+    or within a function with a context manager:
+
+    cimport cython
+    def remainder(int a, int b):
+    with cython.cdivision(True):
+        return a%b
+
+
+    benchmark on the folder of factorial - python interpreter vs cython compiler :
+
+    # near two times cython function faster than python func on 1000000 iterations
+
+    The py_fact function runs approximately two times faster with Cython for small input values on this system, although the speedup depends on a number of factors. The source of the speedup is the removal of interpretation overhead and the reduced function call overhead in Cython.
