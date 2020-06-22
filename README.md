@@ -475,4 +475,151 @@
 
     # near two times cython function faster than python func on 1000000 iterations
 
-    The py_fact function runs approximately two times faster with Cython for small input values on this system, although the speedup depends on a number of factors. The source of the speedup is the removal of interpretation overhead and the reduced function call overhead in Cython.
+    """
+    runtime of cython method even if it s wrote with dynamic typing and pure python 1.7897053609999998 sec
+    runtime of pure python executed on python interpreter 3.825792878 sec
+    runtime of cython with statical typing and pure python 1.4818592860000006 sec
+    """
+
+    # we can observe that statically typing variables will enhance performance of our cython func from this 1.7897053609999998 sec to this 1.4818592860000006 sec.
+
+
+    The py_fact function runs approximately two times faster with Cython for small input values on this system, although the speedup depends on a number of factors.
+    The source of the speedup is the removal of interpretation overhead and the reduced function call overhead in Cython.
+
+    When defining any function in Cython, we may mix dynamically typed Python object arguments with statically typed arguments. Cython allows statically typed arguments
+    to have default values, and statically typed arguments can be passed positionally or by keyword.
+
+    cdef long c_fact(long n):
+    """Computes n!"""
+    if n <= 1:
+        return 1
+    return n * c_fact(n - 1)
+
+    # If we want to use c_fact from Python code outside this extension module, we need a minimal def function that calls c_fact internally:
+    def wrap_c_fact(n):
+        """Computes n!"""
+        return c_fact(n)
+
+
+### - a little benchmark of cdef, cpdef, c and python :
+
+![](./static/cdef_cpdef_c.png)
+
+    - list casting in cython :
+        def safe_cast_to_list(a):
+        cdef list cast_list = <list?>a
+        print type(a)
+        print type(cast_list)
+        cast_list.append(1)
+
+    struct, unions and enums
+    the equivalent Cython declarations are:
+    cdef struct mycpx:
+        float real
+        float imag
+    cdef union uu:
+        int a
+        short b, c
+
+    To declare a variable with the struct type, simply use cdef, and use the struct type as
+    you would any other type:
+    cdef mycpx zz
+
+    We can initialize a struct in three ways:
+    • We can use struct literals:
+    cdef mycpx a = mycpx(3.1415, -1.0)
+    cdef mycpx b = mycpx(real=2.718, imag=1.618034)
+
+    The struct fields can be assigned by name individually:
+    cdef mycpx zz
+    zz.real = 3.1415
+    zz.imag = -1.0
+
+    Lastly, structs can be assigned from a Python dictionary:
+    cdef mycpx zz = {'real': 3.1415, 'imag': -1.0}
+
+    - nested cython struct :
+
+    cdef struct _inner:
+        int inner_a
+
+    cdef struct nested:
+        int outer_a
+        _inner inner
+
+    We can initialize a nested struct on a field-by-field basis or by assigning to a nested dictionary
+    that matches the structure of nested:
+
+    cdef nested n = {'outer_a': 1, 'inner': {'inner_a': 2}}
+
+    To define an enum, we can define the members on separate lines, or on one line separated
+    with commas:
+    cdef enum PRIMARIES:
+        RED=1
+        YELLOW = 3
+        BLUE=5
+
+    cdef enum SECONDARIES:
+        ORANGE, GREEN, PURPLE
+
+    - Cython for Loops and while Loops :
+
+    Consider the common Python for loop over a range:
+    n=100
+    # ...
+    for i in range(n):
+    # ...
+
+    If the index variable i and range argument n are dynamically typed, Cython may not be able to generate a fast C for loop.
+    We can easily fix that by typing i and n:
+
+    cdef unsigned int i, n = 100
+
+    for i in range(n):
+    # ...
+
+    Cython is often able to infer types and generate fast loops automatically, but not always. The following guidelines will help
+    Cython generate efficient loops.
+
+    Performance-wise, the Cython code with the extra typing information is consistently
+    two to three times faster than the untyped equivalent.
+
+    The Cython Preprocessor
+    Cython has a DEF keyword that creates a macro, which is a compile-time symbolic con‐ stant akin to #define C preprocessor symbolic macros. These can be useful for giving meaningful names to magic numbers, allowing them to be updated and changed in a single location. They are textually substituted with their value at compile time.
+
+    + For example:
+
+        DEF E = 2.718281828459045
+        DEF PI = 3.141592653589793
+
+    def feynmans_jewel():
+        """Returns e**(i*pi) + 1. Should be ~0.0"""
+        returnE**(1*PI)+1.0
+
+![](./static/predefined_setofnames.png)
+
+    Taking an example from Cython’s documentation, say we want to branch based on the OS we are on:
+    IF UNAME_SYSNAME == "Windows":
+    # ...Windows-specific code...
+    ELIF UNAME_SYSNAME == "Darwin": # ...Mac-specific code...
+    ELIF UNAME_SYSNAME == "Linux": # ...Linux-specific code...
+    ELSE:
+    # ...other OS...
+
+    Bridging the Python 2 and Python 3 Divide
+    As we learned in Chapter 2, cython generates a C source file that is compiled into an extension module with a
+    specific version of Python. Conveniently, we can write our Cython .pyx file using either Python 2 or Python 3 syntax.
+    The generated C source file is compatible with either Python 2 or Python 3. This means any Cython code can be compiled for either Python 2 or Python 3 runtimes.
+
+    - compiling a cython file `einstein.pyx` with python 3:
+
+    import sys
+    print("If facts don't fit the theory, change the facts.", file=sys.stderr)
+
+    it will not compile assuming Python 2 syntax. So, we must pass in the -3 flag to set Python 3 syntax:
+
+    $ cython -3 einstein.pyx
+
+    - If the Pareto principle is to be believed, then roughly 80 percent of the runtime in a library is due to just 20 percent of the code. For a Python project
+    to see major perfor‐ mance improvements, it need only convert a small fraction of its code base from Python to Cython.
