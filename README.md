@@ -1,6 +1,6 @@
 # High-Performance-Python
 + Explore different ways to extend python with high performance tools to enhance performance of the system.
-
++ Remembering the Pareto principle (or the 80/20 rule) is useful: we need only use Cython in the 20 percent of the code that occupies 80 percent (or more) of the runtime. The other 80 percent of the code can (and should) remain unmodified.
 
     + CPU :
     The main properties of interest in a computing unit are the number of operations it can do in one cycle
@@ -623,3 +623,74 @@
 
     - If the Pareto principle is to be believed, then roughly 80 percent of the runtime in a library is due to just 20 percent of the code. For a Python project
     to see major perfor‐ mance improvements, it need only convert a small fraction of its code base from Python to Cython.
+
+### + Cython in Practice: N-Body Simulation
+
+    N-body simulator to model the solar system
+
+    Overview of the N-Body Python Code
+    The Python N-body code evolves the positions and velocities of the four Jovian planets in a heliocentric coordinate system. Such a system is chaotic, meaning
+    that the long- term evolution of the system is very sensitive to the initial positions and velocities of all bodies. Small perturbations in the initial conditions
+    lead to arbitrarily diverging results, making prediction difficult. When we are simulating a chaotic system, it is important that the algorithm, or integrator,
+    be highly accurate.
+
+    $ cd ./n_body_simulation/pure_python
+    $ time python nbody.py 500000
+        real    0m5.640s
+        user    0m5.610s
+        sys     0m0.019s
+
+    This pure-Python version requires about 5 seconds to advance 500,000 steps. When all is said and done, Cython will improve performance by nearly two orders of magni‐ tude,
+    approaching the performance of a pure-C version of the same algorithm.
+
+    Converting to Cython
+    Let’s first run our pure-Python version under cProfile to quantify where the runtime is spent:
+    $ ipython --no-banner
+     In [1]: %run -p nbody.py 500000
+          71 function calls in 13.897 seconds
+
+
+    to use cython just copy the python code from n-body.py into n-body.pyx :
+    check code ./n_body_simulation/cython
+
+    Let’s compile and run the Cython version to ensure the program works correctly. To compile, we use a simple distuils script named setup.py:
+
+    Building our extension is straightforward:
+    $ python setup.py build_ext -i
+
+    After compiling our extension, we can test that we obtain the same results as before:
+    $ time python run_nbody.py 500000
+        real    0m0.247s
+        user    0m0.183s
+        sys     0m0.054s
+
+    ++ if we compare performance for both cython and python we observe that cython is 10 times faster than python.
+
+
+    for clang version :
+    $ gcc -pipe -Wall -O3 -fomit-frame-pointer nbody.c -o nbody.x
+    $ time ./nbody.x 500000
+        real    0m0.053s
+        user    0m0.051s
+        sys     0m0.002s
+
+    ++ we can observe that pure c is about 6 times faster than cython.
+
+    and cython is 28 faster than pure python.
+
+    1. Profile the pure-Python version (using the cProfile module or IPython’s %run -p magic command) to determine where
+       the code spends its time. In this example, nearly all the runtime is spent in the loop-heavy advance function.
+    2. Inspect the hotspots for nested for loops, numeric-heavy operations, and nested Python containers, all of which can be easily
+       converted with Cython to use more efficient C-level constructs. This example happens to have all of the above.
+    3. Use Cython to declare C data structures equivalent to the Python data structures identified above. Create converters (if necessary) to transform
+       Python data to C data. In the N-body simulation, we created a body_t struct to represent the nested list-of-tuples-of-lists-of-floats Python data in C,
+       which has better data locality and significantly more efficient access. We also created two converters, make_cbodies and make_pybodies, to convert Python
+       to C and C to Python, respectively. Some‐ times these converters are not necessary if Cython can convert the data automati‐ cally.
+    4. Convert the hotspots to use our C-level data structures. Remove Python data struc‐ tures from nested loops to the extent possible. Ensure all variables used
+       in nested loops (including the loop variables themselves) are statically typed. Our make_pybodies and make_cbodies converters, coupled with plenty of cdef
+       decla‐ rations, were sufficient in this example.
+    5. Test the code to ensure the modifications have not changed the semantics. Profile again. If performance is not satisfactory, use Cython profiling tools
+       to draw attention to inefficient code.
+    6. Repeat as necessary.
+
+    ++ Remembering the Pareto principle (or the 80/20 rule) is useful: we need only use Cython in the 20 percent of the code that occupies 80 percent (or more) of the runtime. The other 80 percent of the code can (and should) remain unmodified.
