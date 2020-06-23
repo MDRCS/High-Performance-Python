@@ -786,4 +786,11 @@
     which should always be the first tool we use to acquire quantitative data, tells us what routines to focus on. Code annotations can then help us determine why specific lines are slow, and can help us remove C API calls
     from the generated source. We split profiling and annotations into separate sections in this chapter, but in practice, their usage is often finely interleaved.
 
+### + parallel computing with nogil :
 
+    Using prange to Parallelize Loops
+    The prange special function is a Cython-only construct. Its name is meant to evoke a parallel range, although unlike the built-in range, prange can be used only in conjunc‐ tion with a for loop. It cannot be used in isolation.
+    To access prange, we simply cimport it from cython.parallel: from cython.parallel cimport prange
+
+    $ cd ./parallel-cython/prange-parallel-loops
+    $ python setup_julia.py build_ext -i
