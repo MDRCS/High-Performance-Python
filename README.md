@@ -2,6 +2,7 @@
 + Explore different ways to extend python with high performance tools to enhance performance of the system.
 + Remembering the Pareto principle (or the 80/20 rule) is useful: we need only use Cython in the 20 percent of the code that occupies 80 percent (or more) of the runtime. The other 80 percent of the code can (and should) remain unmodified.
 
+
     + CPU :
     The main properties of interest in a computing unit are the number of operations it can do in one cycle
     and the number of cycles it can do in one second. The first value is measured by its instructions per cycle (IPC),
