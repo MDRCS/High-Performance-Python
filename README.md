@@ -694,3 +694,7 @@
     6. Repeat as necessary.
 
     ++ Remembering the Pareto principle (or the 80/20 rule) is useful: we need only use Cython in the 20 percent of the code that occupies 80 percent (or more) of the runtime. The other 80 percent of the code can (and should) remain unmodified.
+
+### + Cython and Extension Types :
+
+    
