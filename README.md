@@ -695,6 +695,41 @@
 
     ++ Remembering the Pareto principle (or the 80/20 rule) is useful: we need only use Cython in the 20 percent of the code that occupies 80 percent (or more) of the runtime. The other 80 percent of the code can (and should) remain unmodified.
 
-### + Cython and Extension Types :
+### + Wrapping C Libraries with Cython :
 
-    
+    Declaring External C Code in Cython
+    These declaration blocks are meant to tell Cython what C constructs we wish to use from a specified C header file. Their syntax is:1
+
+    cdef extern from "header_name":
+    indented declarations from header file
+
+    The header_name goes inside a single- or double-quoted string. Including the extern block has the following effects:
+
+    • The cython compiler generates an #include "header_name" line inside the gener‐ ated source file.
+    • The types, functions, and other declarations made in the block body are accessible from Cython code.
+    • Cython will check at compile time that the C declarations are used in a type-correct manner, and will produce a compilation error
+      if they are not.
+
+    This style of external declarations is not recommended, as it has the same drawbacks as using extern in C directly. The extern block is preferred.
+
+    $ cd ./wrapping_c_libraries/wrapping-c-functions-mt-random
+    $ python setup.py build_ext --inplace
+    $ python setup.py build_ext -i
+    $ ipython --banner
+    $ import mt_random
+    $ mt_random.init_state(42)
+    $ mt_random.rand()
+
+
+    $ cd ./wrapping_c_libraries/wrapping-cpp
+    $ python setup.py build_ext -i
+    $ ipython --banner
+    $ from RNG import RNG
+        In [37]: r = RNG(42)
+        In [38]: r.rand()
+        Out[38]: 0.37454011439684315
+        In [39]: r2 = RNG(range(30, 40))
+        In [40]: r2.rand()
+        Out[40]: 0.04691027990703245
+        In [41]: r2.randint()
+
